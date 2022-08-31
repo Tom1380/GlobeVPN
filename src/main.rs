@@ -1,20 +1,30 @@
 use aws_config::meta::region::RegionProviderChain;
-use aws_sdk_ec2::{model::InstanceType, Client, Error, Region};
-use std::{fs::OpenOptions, io::Write, os::unix::fs::OpenOptionsExt};
+use aws_sdk_ec2::{
+    model::{Filter, InstanceType},
+    Client, Error, Region,
+};
+use std::{fs::OpenOptions, io::prelude::*, os::unix::fs::OpenOptionsExt, process::Command};
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     let client = new_client().await;
 
-    create_key_pair_if_necessary("testiamo", &client).await;
+    create_key_pair_if_necessary("20agosto", &client).await;
     configure_security_group(&client).await;
     let ip = launch_ec2_instance(&client).await;
+    let path = generate_configuration(&ip);
+
+    std::thread::sleep(std::time::Duration::from_secs(30));
+
+    run_openvpn(path);
+
+    println!("Done, hopefully");
 
     Ok(())
 }
 
 async fn new_client() -> Client {
-    let region = Region::new("eu-central-1");
+    let region = Region::new("eu-west-2");
     let region_provider = RegionProviderChain::first_try(region)
         .or_default_provider()
         .or_else(Region::new("us-east-2"));
@@ -52,6 +62,15 @@ async fn configure_security_group(client: &Client) {
         .send()
         .await;
 
+    let cidr = public_ip::addr_v4()
+        .await
+        .map(|ip| format!("{ip}/32"))
+        .unwrap_or_else(|| {
+            println!("Couldn't retrieve your public ip address.");
+            println!("Enabling all IP address, be wary.");
+            "0.0.0.0/0".to_string()
+        });
+
     // TODO check if it's failing because the rule already exists, or because of other errors.
     // If it already exists, no problem.
     // Note: just because the group already exists doesn't mean it's correctly set,
@@ -59,34 +78,91 @@ async fn configure_security_group(client: &Client) {
     let _ = client
         .authorize_security_group_ingress()
         .group_name("globevpn")
-        .set_ip_protocol(Some("tcp".to_string()))
-        .cidr_ip("0.0.0.0/0")
+        .ip_protocol("tcp")
+        .cidr_ip(&cidr)
         .from_port(22)
         .to_port(22)
+        .send()
+        .await;
+
+    let _ = client
+        .authorize_security_group_ingress()
+        .group_name("globevpn")
+        .ip_protocol("udp")
+        .cidr_ip(&cidr)
+        .from_port(1194)
+        .to_port(1194)
         .send()
         .await;
 }
 
 /// Launches a new ec2 instance and returns its public ipv4.
 async fn launch_ec2_instance(client: &Client) -> String {
-    let r = client
+    let run_instances_output = client
         .run_instances()
         .instance_type(InstanceType::T2Nano)
-        .image_id("ami-065deacbcaac64cf2") // ubuntu Frankfurt
-        .key_name("testiamo")
+        .image_id("ami-08247070f19f16c8f")
+        .key_name("20agosto")
         .security_groups("globevpn")
         .min_count(1)
         .max_count(1)
-        // .instance_ids("i-0542400d2dc1c0d08")
         .send()
         .await
         .unwrap();
-
-    r.instances
+    let instance_id = run_instances_output
+        .instances()
         .unwrap()
         .get(0)
         .unwrap()
-        .public_ip_address
-        .clone()
+        .instance_id()
+        .unwrap();
+
+    std::thread::sleep(std::time::Duration::from_secs(60));
+
+    get_public_ip(&client, instance_id).await
+}
+
+async fn get_public_ip(client: &Client, instance_id: &str) -> String {
+    client
+        .describe_network_interfaces()
+        .filters(
+            Filter::builder()
+                .name("attachment.instance-id")
+                .values(instance_id)
+                .build(),
+        )
+        .send()
+        .await
         .unwrap()
+        .network_interfaces
+        .unwrap()
+        .get(0)
+        .unwrap()
+        .association
+        .as_ref()
+        .unwrap()
+        .public_ip
+        .as_ref()
+        .unwrap()
+        .to_string()
+}
+
+/// Generates a config file, saves it and returns its path.
+fn generate_configuration(ip: &str) -> &str {
+    let template = include_str!("template.ovpn");
+
+    let config = template.replace("{ip}", ip);
+
+    let path = "uk.ovpn";
+    std::fs::write(path, config).expect("Could not save the template.");
+
+    path
+}
+
+/// Runs the OpenVPN client to connect.
+fn run_openvpn(path: &str) {
+    Command::new("sudo")
+        .args(["openvpn", "--config", path])
+        .spawn()
+        .expect("Couldn't spawn openvpn client.");
 }
