@@ -13,13 +13,13 @@ version = "1"
 features = ["full"]
 
 [dependencies.aws-config]
-version = "0.46.0"
+version = "0.47.0"
 
 [dependencies.aws-sdk-ec2]
-version = "0.16.0"
+version = "0.17.0"
 
 [dependencies.aws-types]
-version = "0.46.0"
+version = "0.47.0"
 
 [dependencies.structopt]
 version = "0.3"
