@@ -1,19 +1,27 @@
 #!/bin/sh
 
-# Reference https://hub.docker.com/r/kylemanna/openvpn/
-# Updated to be automated.
+# This script has to run as root.
 
-# Of course, UDP on port 1194 has to be allowed for this to work.
+apt update -y
+apt install openvpn -y
 
-# Fetch the public IP address.
-MY_IP=$(dig +short myip.opendns.com @resolver1.opendns.com)
+# This file has to be copied on the host.
+mv server.conf /etc/openvpn/server/server.conf
 
-OVPN_DATA="ovpn-data-example"
+# Start OpenVPN on boot.
+systemctl enable openvpn-server@server
 
-docker volume create --name $OVPN_DATA
+# Allow IPv4 forwarding.
+printf "\nnet.ipv4.ip_forward=1" >> /etc/sysctl.conf
+sysctl -p
 
-docker run -v $OVPN_DATA:/etc/openvpn --rm kylemanna/openvpn ovpn_genconfig -u udp://"$MY_IP"
-docker run -v $OVPN_DATA:/etc/openvpn --rm -e EASYRSA_BATCH=1 -e EASYRSA_REQ_CN="GlobeVPN" -e EASYRSA_PASSIN=pass:1111 -e EASYRSA_PASSOUT=pass:1111 -it kylemanna/openvpn ovpn_initpki
-docker run -v $OVPN_DATA:/etc/openvpn -d -p 1194:1194/udp --cap-add=NET_ADMIN kylemanna/openvpn
-docker run -v $OVPN_DATA:/etc/openvpn --rm -e EASYRSA_BATCH=1 -e EASYRSA_REQ_CN="GlobeVPN" -e EASYRSA_PASSIN=pass:1111 -e EASYRSA_PASSOUT=pass:1111 -it kylemanna/openvpn easyrsa build-client-full GlobeVPN nopass
-docker run -v $OVPN_DATA:/etc/openvpn --rm kylemanna/openvpn ovpn_getclient GlobeVPN > GlobeVPN.ovpn
+# Use iptables to forward OpenVPN traffic.
+# Have the command run on boot as iptables isn't persistent.
+# Reference https://askubuntu.com/a/290107
+# I'm using single quotes to prevent bash from interpreting the exclamation point as an event.
+echo '#!/bin/bash' > /etc/init.d/iptables_forwarding 
+echo "iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -o eth0 -j MASQUERADE" >> /etc/init.d/iptables_forwarding
+chmod 755 /etc/init.d/iptables_forwarding
+ln -s /etc/init.d/iptables_forwarding /etc/rc2.d/S01iptables_forwarding
+
+reboot
