@@ -16,14 +16,23 @@ version = "1"
 features = ["full"]
 
 [dependencies.aws-config]
-version = "0.47.0"
+version = "0.48.0"
 
 [dependencies.aws-sdk-ec2]
-version = "0.17.0"
+version = "0.18.0"
 
 [dependencies.aws-types]
-version = "0.47.0"
+version = "0.48.0"
 
 [dependencies.structopt]
 version = "0.3"
 default-features = false
+
+[dependencies.uuid]
+version = "1.1.2"
+features = [
+	"v4", # Lets you generate random UUIDs
+	"fast-rng", # Use a faster (but still sufficiently random) RNG
+	"macro-diagnostics", # Enable better diagnostics for compile-time UUIDs
+
+]
