@@ -1,12 +1,14 @@
-mod instance_launches;
+mod ec2_instance;
 mod key_pairs;
+mod manage_directory;
 mod openvpn;
 mod security_groups;
 
 use self::{
-    instance_launches::launch_ec2_instance,
+    ec2_instance::{launch_ec2_instance, setup_ec2_instance},
     key_pairs::create_key_pair_if_necessary,
-    openvpn::{generate_openvpn_configuration, run_openvpn},
+    manage_directory::change_directory,
+    openvpn::run_openvpn,
     security_groups::configure_security_group,
 };
 use aws_config::meta::region::RegionProviderChain;
@@ -16,25 +18,25 @@ use aws_sdk_ec2::{Client, Error, Region};
 async fn main() -> Result<(), Error> {
     let client = new_client().await;
 
-    create_key_pair_if_necessary("20agosto", &client).await;
+    change_directory("eu-central-1").await;
+
+    create_key_pair_if_necessary("globevpn3", &client).await;
     configure_security_group(&client).await;
     let ip = launch_ec2_instance(&client).await;
-    let path = generate_openvpn_configuration(&ip);
 
     std::thread::sleep(std::time::Duration::from_secs(30));
 
-    run_openvpn(path);
+    setup_ec2_instance(&ip).await;
 
-    println!("Done, hopefully");
+    std::thread::sleep(std::time::Duration::from_secs(5));
 
+    run_openvpn(&ip).await;
     Ok(())
 }
 
 async fn new_client() -> Client {
-    let region = Region::new("eu-west-2");
-    let region_provider = RegionProviderChain::first_try(region)
-        .or_default_provider()
-        .or_else(Region::new("us-east-2"));
+    let region = Region::new("eu-central-1");
+    let region_provider = RegionProviderChain::first_try(region);
 
     let shared_config = aws_config::from_env().region(region_provider).load().await;
     Client::new(&shared_config)
