@@ -3,3 +3,5 @@
 *.pub
 *.ovpn
 !src/*
+.globevpn/**
+*.key
