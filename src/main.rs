@@ -16,13 +16,13 @@ use aws_sdk_ec2::{Client, Error, Region};
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    let key_name = "new2";
+    let key_name = "new3";
 
     let client = new_client().await;
 
     change_directory("eu-central-1").await;
 
-    create_key_pair_if_necessary(key_name, &client).await;
+    create_key_pair_if_necessary(&client, key_name).await;
     configure_security_group(&client).await;
 
     let instance_id = launch_ec2_instance(&client, key_name).await;
