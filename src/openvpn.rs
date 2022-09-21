@@ -1,23 +1,34 @@
-use tokio::process::Command;
+use std::{process::Stdio, time::Duration};
+use tokio::{process::Command, time::sleep};
 
 /// Preshares the authentication key via SSH tunnel.
 pub async fn preshare_openvpn_key(ip: &str, key_name: &str) {
     let ssh_key_path = &format!("../{key_name}.pem");
 
-    Command::new("scp")
-        .args([
-            "-i",
-            ssh_key_path,
-            "-o",
-            "StrictHostKeyChecking no",
-            "auth.key",
-            &format!("ubuntu@{ip}:/home/ubuntu"),
-        ])
-        .spawn()
-        .expect("Couldn't generate a new secret OpenVPN key.")
-        .wait()
-        .await
-        .unwrap();
+    for _ in 0..30 {
+        let exit_status = Command::new("scp")
+            .args([
+                "-i",
+                ssh_key_path,
+                "-o",
+                "StrictHostKeyChecking no",
+                "auth.key",
+                &format!("ubuntu@{ip}:/home/ubuntu"),
+            ])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .expect("Couldn't generate a new secret OpenVPN key.")
+            .wait()
+            .await
+            .unwrap();
+
+        if exit_status.success() {
+            break;
+        }
+
+        sleep(Duration::from_secs(2)).await;
+    }
 
     Command::new("ssh")
         .args([
@@ -29,6 +40,7 @@ pub async fn preshare_openvpn_key(ip: &str, key_name: &str) {
             "-t",
             "sudo mv auth.key /etc/openvpn/server",
         ])
+        .stdout(Stdio::null())
         .spawn()
         .expect("Couldn't generate a new secret OpenVPN key.")
         .wait()

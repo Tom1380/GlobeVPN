@@ -33,12 +33,7 @@ async fn main() -> Result<(), Error> {
 
     let ip = get_public_ip(&client, &instance_id).await;
 
-    println!("Waiting to preshare the key.");
-    std::thread::sleep(std::time::Duration::from_secs(20));
-
     preshare_openvpn_key(&ip, key_name).await;
-
-    std::thread::sleep(std::time::Duration::from_secs(5));
 
     run_openvpn(&ip).await;
 
