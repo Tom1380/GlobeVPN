@@ -3,16 +3,16 @@ use aws_sdk_ec2::{
     Client,
 };
 use std::time::{Duration, Instant};
-use tokio::{process::Command, time::sleep};
+use tokio::time::sleep;
 
-/// Launches a new ec2 instance and returns its public ipv4.
-pub async fn launch_ec2_instance(client: &Client) -> String {
+/// Launches a new EC2 instance and returns its instance ID.
+pub async fn launch_ec2_instance(client: &Client, key_name: &str) -> String {
     let run_instances_output = client
         .run_instances()
         // TODO let this be choosable by the user.
         .instance_type(InstanceType::T2Micro)
         .image_id("ami-06e97680b8bf6528e")
-        .key_name("globevpn3")
+        .key_name(key_name)
         .security_groups("globevpn")
         .min_count(1)
         .max_count(1)
@@ -27,10 +27,11 @@ pub async fn launch_ec2_instance(client: &Client) -> String {
         .instance_id()
         .unwrap();
 
-    get_public_ip(&client, instance_id).await
+    instance_id.to_string()
 }
 
-async fn get_public_ip(client: &Client, instance_id: &str) -> String {
+/// Retrieves the EC2 instance's public IPv4 address.
+pub async fn get_public_ip(client: &Client, instance_id: &str) -> String {
     let instant = Instant::now();
 
     for _ in 0..60 {
@@ -65,36 +66,11 @@ async fn try_get_public_ip(client: &Client, instance_id: &str) -> Option<String>
         .public_ip
 }
 
-/// Preshares the authentication key via SSH tunnel.
-pub async fn setup_ec2_instance(ip: &str) {
-    Command::new("scp")
-        .args([
-            "-i",
-            "../globevpn3.pem",
-            "-o",
-            "StrictHostKeyChecking no",
-            "auth.key",
-            &format!("ubuntu@{ip}:/home/ubuntu"),
-        ])
-        .spawn()
-        .expect("Couldn't generate a new secret OpenVPN key.")
-        .wait()
+pub async fn terminate_ec2_instance(client: &Client, instance_id: &str) {
+    client
+        .terminate_instances()
+        .instance_ids(instance_id)
+        .send()
         .await
-        .unwrap();
-
-    Command::new("ssh")
-        .args([
-            "-i",
-            "../globevpn3.pem",
-            "-o",
-            "StrictHostKeyChecking no",
-            &format!("ubuntu@{ip}"),
-            "-t",
-            "sudo mv auth.key /etc/openvpn/server",
-        ])
-        .spawn()
-        .expect("Couldn't generate a new secret OpenVPN key.")
-        .wait()
-        .await
-        .unwrap();
+        .expect("Couldn't terminate EC2 instance. Do it manually to avoid wrong billings.");
 }

@@ -5,10 +5,10 @@ mod openvpn;
 mod security_groups;
 
 use self::{
-    ec2_instance::{launch_ec2_instance, setup_ec2_instance},
+    ec2_instance::{get_public_ip, launch_ec2_instance, terminate_ec2_instance},
     key_pairs::create_key_pair_if_necessary,
     manage_directory::change_directory,
-    openvpn::run_openvpn,
+    openvpn::{preshare_openvpn_key, run_openvpn},
     security_groups::configure_security_group,
 };
 use aws_config::meta::region::RegionProviderChain;
@@ -16,21 +16,34 @@ use aws_sdk_ec2::{Client, Error, Region};
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
+    let key_name = "new2";
+
     let client = new_client().await;
 
     change_directory("eu-central-1").await;
 
-    create_key_pair_if_necessary("globevpn3", &client).await;
+    create_key_pair_if_necessary(key_name, &client).await;
     configure_security_group(&client).await;
-    let ip = launch_ec2_instance(&client).await;
 
-    std::thread::sleep(std::time::Duration::from_secs(30));
+    let instance_id = launch_ec2_instance(&client, key_name).await;
 
-    setup_ec2_instance(&ip).await;
+    println!("Launched EC2 instance.");
+
+    let ctrl_c = tokio::spawn(ctrl_c_listener(client.clone(), instance_id.clone()));
+
+    let ip = get_public_ip(&client, &instance_id).await;
+
+    println!("Waiting to preshare the key.");
+    std::thread::sleep(std::time::Duration::from_secs(20));
+
+    preshare_openvpn_key(&ip, key_name).await;
 
     std::thread::sleep(std::time::Duration::from_secs(5));
 
     run_openvpn(&ip).await;
+
+    ctrl_c.await.unwrap();
+
     Ok(())
 }
 
@@ -40,4 +53,13 @@ async fn new_client() -> Client {
 
     let shared_config = aws_config::from_env().region(region_provider).load().await;
     Client::new(&shared_config)
+}
+
+async fn ctrl_c_listener(client: Client, instance_id: String) {
+    tokio::signal::ctrl_c().await.unwrap();
+    println!("Received Ctrl+C!");
+    terminate_ec2_instance(&client, &instance_id).await;
+    println!("Terminated the instance.");
+
+    std::process::exit(0);
 }
