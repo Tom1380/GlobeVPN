@@ -6,12 +6,16 @@ use std::time::{Duration, Instant};
 use tokio::time::sleep;
 
 /// Launches a new EC2 instance and returns its instance ID.
-pub async fn launch_ec2_instance(client: &Client, key_name: &str) -> String {
+pub async fn launch_ec2_instance(
+    client: &Client,
+    instance_type: InstanceType,
+    ami: &str,
+    key_name: &str,
+) -> String {
     let run_instances_output = client
         .run_instances()
-        // TODO let this be choosable by the user.
-        .instance_type(InstanceType::T2Micro)
-        .image_id("ami-06e97680b8bf6528e")
+        .instance_type(instance_type)
+        .image_id(ami)
         .key_name(key_name)
         .security_groups("globevpn")
         .min_count(1)
