@@ -21,9 +21,13 @@ const fn regions() -> [&'static str; REGION_AMIS.len()] {
 #[clap(author, version, about, long_about = None)]
 pub struct Args {
     #[clap(short, long, default_value = "eu-central-1", value_parser=regions())]
+    #[clap(help = "Where you will appear from when establishing connections.")]
     pub region: String,
 
     #[clap(short, long, value_enum, default_value_t=AcceptedInstanceType::T2Micro)]
+    #[clap(
+        help = "Choose which instance type to spin up. T2Nano is cheaper, but AWS offers 750 free hours of T2Micro for the first year."
+    )]
     pub instance_type: AcceptedInstanceType,
 }
 
