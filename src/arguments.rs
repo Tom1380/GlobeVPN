@@ -31,7 +31,7 @@ pub struct Args {
     pub instance_type: AcceptedInstanceType,
 }
 
-#[derive(Debug, Clone, ValueEnum)]
+#[derive(Debug, Copy, Clone, ValueEnum)]
 pub enum AcceptedInstanceType {
     T2Nano,
     T2Micro,

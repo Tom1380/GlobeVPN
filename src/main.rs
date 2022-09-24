@@ -36,9 +36,12 @@ async fn main() -> Result<(), Error> {
     create_key_pair_if_necessary(&client, key_name).await;
     configure_security_group(&client).await;
 
-    let instance_id = launch_ec2_instance(&client, args.instance_type.into(), &ami, key_name).await;
+    let instance_id = launch_ec2_instance(&client, args.instance_type, &ami, key_name).await;
 
-    println!("Launched EC2 instance.");
+    println!(
+        "Launched a {:?} EC2 instance in {}.",
+        args.instance_type, args.region
+    );
 
     let ctrl_c = tokio::spawn(ctrl_c_listener(client.clone(), instance_id.clone()));
 

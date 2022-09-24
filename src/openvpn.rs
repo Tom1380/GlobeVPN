@@ -30,7 +30,7 @@ pub async fn preshare_openvpn_key(ip: &str, key_name: &str) {
         sleep(Duration::from_secs(2)).await;
     }
 
-    Command::new("ssh")
+    let c = Command::new("ssh")
         .args([
             "-i",
             ssh_key_path,
@@ -41,11 +41,16 @@ pub async fn preshare_openvpn_key(ip: &str, key_name: &str) {
             "sudo mv auth.key /etc/openvpn/server",
         ])
         .stdout(Stdio::null())
+        .stderr(Stdio::null())
         .spawn()
         .expect("Couldn't generate a new secret OpenVPN key.")
         .wait()
         .await
         .unwrap();
+
+    if !c.success() {
+        panic!("Couldn't preshare OpenVPN's key.");
+    }
 }
 
 /// Runs the OpenVPN client to connect, the arguments are passed via command line without any configuration file.
