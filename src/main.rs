@@ -19,9 +19,12 @@ use self::{
 use aws_config::meta::region::RegionProviderChain;
 use aws_sdk_ec2::{Client, Error, Region};
 use clap::Parser;
+use std::time::Instant;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
+    let start = Instant::now();
+
     let args = Args::parse();
     // TODO this is a temporary fix.
     let key_name = &args.region;
@@ -43,6 +46,8 @@ async fn main() -> Result<(), Error> {
     let ip = get_public_ip(&client, &instance_id).await;
 
     preshare_openvpn_key(&ip, key_name).await;
+
+    println!("Connected in {} seconds.", start.elapsed().as_secs());
 
     run_openvpn(&ip).await;
 
