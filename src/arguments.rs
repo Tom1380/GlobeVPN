@@ -26,7 +26,7 @@ pub struct Args {
 
     #[clap(short, long, value_enum, default_value_t=AcceptedInstanceType::T2Micro)]
     #[clap(
-        help = "Choose which instance type to spin up. T2Nano is cheaper, but AWS offers 750 free hours of T2Micro for the first year."
+        help = "Choose which instance type to spin up. T2Nano is cheaper, but AWS offers 750 free hours of T2Micro per month for the first year."
     )]
     pub instance_type: AcceptedInstanceType,
 }
