@@ -4,7 +4,6 @@ mod ec2_instance;
 mod key_pairs;
 mod manage_directory;
 mod openvpn;
-mod regions;
 mod security_groups;
 
 use self::{
