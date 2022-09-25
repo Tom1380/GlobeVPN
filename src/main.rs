@@ -7,8 +7,8 @@ mod openvpn;
 mod security_groups;
 
 use self::{
-    ami::get_ami,
-    arguments::Args,
+    ami::{get_region_info, RegionInfo},
+    arguments::{Args, InstanceSize},
     ec2_instance::{get_public_ip, launch_ec2_instance, terminate_ec2_instance},
     key_pairs::create_key_pair_if_necessary,
     manage_directory::change_directory,
@@ -16,7 +16,7 @@ use self::{
     security_groups::configure_security_group,
 };
 use aws_config::meta::region::RegionProviderChain;
-use aws_sdk_ec2::{Client, Error, Region};
+use aws_sdk_ec2::{model::InstanceType, Client, Error, Region};
 use clap::Parser;
 use std::time::Instant;
 
@@ -25,9 +25,14 @@ async fn main() -> Result<(), Error> {
     let start = Instant::now();
 
     let args = Args::parse();
+    let ri = get_region_info(&args.region);
+    let ami = ri
+        .ami
+        .expect("Couldn't find the AMI for the requested region.");
+    let instance_type = get_instance_type(&args, &ri);
+
     // TODO this is a temporary fix.
     let key_name = &args.region;
-    let ami = get_ami(&args.region).expect("Couldn't find the AMI for the requested region.");
 
     let client = new_client(&args.region).await;
 
@@ -36,11 +41,11 @@ async fn main() -> Result<(), Error> {
     create_key_pair_if_necessary(&client, key_name).await;
     configure_security_group(&client).await;
 
-    let instance_id = launch_ec2_instance(&client, args.instance_type, &ami, key_name).await;
+    let instance_id = launch_ec2_instance(&client, instance_type.clone(), &ami, key_name).await;
 
     println!(
         "Launched a {:?} EC2 instance in {}.",
-        args.instance_type, args.region
+        &instance_type, args.region
     );
 
     let ctrl_c = tokio::spawn(ctrl_c_listener(client.clone(), instance_id.clone()));
@@ -56,6 +61,23 @@ async fn main() -> Result<(), Error> {
     ctrl_c.await.unwrap();
 
     Ok(())
+}
+
+/// Check the arguments and T2 availability in the requested region to determine which instance type to launch.
+fn get_instance_type(args: &Args, region_info: &RegionInfo) -> InstanceType {
+    use InstanceSize::*;
+    // If the user wants T3 explicitly or T2 isn't available, opt for T3.
+    if args.t3 || !region_info.has_t2 {
+        match args.size {
+            Nano => InstanceType::T3Nano,
+            Micro => InstanceType::T3Micro,
+        }
+    } else {
+        match args.size {
+            Nano => InstanceType::T2Nano,
+            Micro => InstanceType::T2Micro,
+        }
+    }
 }
 
 async fn new_client(region: &str) -> Client {

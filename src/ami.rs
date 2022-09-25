@@ -1,30 +1,50 @@
 // TODO put all the AMIs in and change the Option to a &str.
-pub const REGION_AMIS: [(&str, Option<&str>); 23] = [
-    ("eu-central-1", Some("ami-06e97680b8bf6528e")),
-    ("eu-west-1", None),
-    ("eu-west-2", Some("ami-061e7843348aee109")),
-    ("eu-south-1", None),
-    ("eu-west-3", None),
-    ("eu-north-1", None),
-    ("us-east-1", Some("ami-09b8d4b4d39180649")),
-    ("us-east-2", None),
-    ("us-west-1", None),
-    ("us-west-2", None),
-    ("ca-central-1", None),
-    ("sa-east-1", Some("ami-0d5990429ef5c2da8")),
-    ("ap-southeast-2", Some("ami-081d9e6c6f75745e3")),
-    ("ap-east-1", None),
-    ("ap-southeast-3", None),
-    ("ap-south-1", None),
-    ("ap-northeast-3", None),
-    ("ap-northeast-2", None),
-    ("ap-southeast-1", None),
-    ("ap-northeast-1", None),
-    ("af-south-1", None),
-    ("me-south-1", None),
-    ("me-central-1", None),
+pub const REGION_INFO: [RegionInfo; 23] = [
+    RegionInfo::new("eu-central-1", Some("ami-0163e22b06e9d08d4"), true),
+    RegionInfo::new("eu-west-1", None, true),
+    RegionInfo::new("eu-west-2", None, true),
+    RegionInfo::new("eu-south-1", Some("ami-09412495bdfcff6e0"), false),
+    RegionInfo::new("eu-west-3", None, true),
+    RegionInfo::new("eu-north-1", None, true),
+    RegionInfo::new("us-east-1", None, true),
+    RegionInfo::new("us-east-2", None, true),
+    RegionInfo::new("us-west-1", None, true),
+    RegionInfo::new("us-west-2", None, true),
+    RegionInfo::new("ca-central-1", None, true),
+    RegionInfo::new("sa-east-1", None, true),
+    RegionInfo::new("ap-southeast-2", None, true),
+    RegionInfo::new("ap-east-1", None, true),
+    RegionInfo::new("ap-southeast-3", None, true),
+    RegionInfo::new("ap-south-1", None, true),
+    RegionInfo::new("ap-northeast-3", None, true),
+    RegionInfo::new("ap-northeast-2", None, true),
+    RegionInfo::new("ap-southeast-1", None, true),
+    RegionInfo::new("ap-northeast-1", None, true),
+    RegionInfo::new("af-south-1", None, true),
+    RegionInfo::new("me-south-1", None, true),
+    RegionInfo::new("me-central-1", None, true),
 ];
 
-pub fn get_ami(region: &str) -> Option<&str> {
-    REGION_AMIS.into_iter().find(|(r, _ami)| r == &region)?.1
+pub fn get_region_info(region: &str) -> RegionInfo {
+    REGION_INFO
+        .into_iter()
+        .find(|info| info.region == region)
+        // Shouldn't happen as clap ensures that the region is in REGION_INFO.
+        .expect("Couldn't find specified region.")
+}
+
+pub struct RegionInfo<'a> {
+    pub region: &'a str,
+    pub ami: Option<&'a str>,
+    pub has_t2: bool,
+}
+
+impl<'a> RegionInfo<'a> {
+    const fn new(region: &'a str, ami: Option<&'a str>, has_t2: bool) -> Self {
+        Self {
+            region,
+            ami,
+            has_t2,
+        }
+    }
 }

@@ -8,13 +8,13 @@ use tokio::time::sleep;
 /// Launches a new EC2 instance and returns its instance ID.
 pub async fn launch_ec2_instance(
     client: &Client,
-    instance_type: impl Into<InstanceType>,
+    instance_type: InstanceType,
     ami: &str,
     key_name: &str,
 ) -> String {
     let run_instances_output = client
         .run_instances()
-        .instance_type(instance_type.into())
+        .instance_type(instance_type)
         .image_id(ami)
         .key_name(key_name)
         .security_groups("globevpn")

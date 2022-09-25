@@ -1,16 +1,15 @@
-use crate::ami::REGION_AMIS;
-use aws_sdk_ec2::model::InstanceType;
+use crate::ami::REGION_INFO;
 use clap::{Parser, ValueEnum};
 
 /// Extract an array of regions only from the array of region-ami tuples.
-const fn regions() -> [&'static str; REGION_AMIS.len()] {
-    let mut regions = [""; REGION_AMIS.len()];
+const fn regions() -> [&'static str; REGION_INFO.len()] {
+    let mut regions = [""; REGION_INFO.len()];
 
     let mut i = 0;
 
     // Circumnavigates the ban on for loops in constant functions.
     while i < regions.len() {
-        regions[i] = REGION_AMIS[i].0;
+        regions[i] = REGION_INFO[i].region;
         i += 1;
     }
 
@@ -24,25 +23,21 @@ pub struct Args {
     #[clap(help = "Where you will appear from when establishing connections.")]
     pub region: String,
 
-    #[clap(short, long, value_enum, default_value_t=AcceptedInstanceType::T2Micro)]
+    #[clap(short, long, value_enum, default_value_t=InstanceSize::Micro)]
     #[clap(
-        help = "Choose which instance type to spin up. T2Nano is cheaper, but AWS offers 750 free hours of T2Micro per month for the first year."
+        help = "Choose which instance size to spin up. Nano is cheaper, but AWS offers 750 free hours per month of the lowest available generation of Micro for the first year."
     )]
-    pub instance_type: AcceptedInstanceType,
+    pub size: InstanceSize,
+
+    #[clap(long, action)]
+    #[clap(
+        help = "Chooses T3 over T2 even when both are available. Keep in mind that AWS' offer only applies to the lowest available generation of Micro."
+    )]
+    pub t3: bool,
 }
 
 #[derive(Debug, Copy, Clone, ValueEnum)]
-pub enum AcceptedInstanceType {
-    T2Nano,
-    T2Micro,
-}
-
-impl Into<InstanceType> for AcceptedInstanceType {
-    fn into(self) -> InstanceType {
-        use InstanceType::*;
-        match self {
-            Self::T2Nano => T2Nano,
-            Self::T2Micro => T2Micro,
-        }
-    }
+pub enum InstanceSize {
+    Nano,
+    Micro,
 }
