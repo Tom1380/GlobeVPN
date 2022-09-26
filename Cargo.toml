@@ -1,7 +1,11 @@
 [package]
-name = "aws"
+name = "globevpn"
 version = "0.1.0"
 edition = "2021"
+authors = ["Tommaso Thea"]
+description = """
+GlobeVPN, connect to any AWS region in a minute.
+"""
 
 [dependencies]
 clap = { version = "3.2.22", features = ["derive", "cargo"] }
