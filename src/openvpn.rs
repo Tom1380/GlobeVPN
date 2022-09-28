@@ -3,7 +3,7 @@ use tokio::{process::Command, time::sleep};
 
 /// Preshares the authentication key via SSH tunnel.
 pub async fn preshare_openvpn_key(ip: &str, key_name: &str) {
-    let ssh_key_path = &format!("../{key_name}.pem");
+    let ssh_key_path = &format!("{key_name}.pem");
 
     for _ in 0..30 {
         let exit_status = Command::new("scp")

@@ -8,8 +8,10 @@ mod security_groups;
 
 use self::{
     arguments::{Args, InstanceSize},
-    ec2_instance::{get_public_ip, launch_ec2_instance, terminate_ec2_instance},
-    key_pairs::create_key_pair_if_necessary,
+    ec2_instance::{
+        delete_ec2_key_pair, get_public_ip, launch_ec2_instance, terminate_ec2_instance,
+    },
+    key_pairs::create_new_key_pair,
     manage_directory::change_directory,
     openvpn::{preshare_openvpn_key, run_openvpn},
     regions::{get_region_info, RegionInfo},
@@ -31,28 +33,29 @@ async fn main() -> Result<(), Error> {
         .expect("Couldn't find the AMI for the requested region.");
     let instance_type = get_instance_type(&args, &ri);
 
-    // TODO this is a temporary fix.
-    let key_name = &args.region;
-
     let client = new_client(&args.region).await;
 
     change_directory(&args.region).await;
 
-    create_key_pair_if_necessary(&client, key_name).await;
+    let key_name = create_new_key_pair(&client).await;
     configure_security_group(&client).await;
 
-    let instance_id = launch_ec2_instance(&client, instance_type.clone(), &ami, key_name).await;
+    let instance_id = launch_ec2_instance(&client, instance_type.clone(), &ami, &key_name).await;
 
     println!(
         "Launched a {:?} EC2 instance in {}.",
         &instance_type, args.region
     );
 
-    let ctrl_c = tokio::spawn(ctrl_c_listener(client.clone(), instance_id.clone()));
+    let ctrl_c = tokio::spawn(ctrl_c_listener(
+        client.clone(),
+        instance_id.clone(),
+        key_name.clone(),
+    ));
 
     let ip = get_public_ip(&client, &instance_id).await;
 
-    preshare_openvpn_key(&ip, key_name).await;
+    preshare_openvpn_key(&ip, &key_name).await;
 
     println!("Connected in {} seconds.", start.elapsed().as_secs());
 
@@ -88,11 +91,12 @@ async fn new_client(region: &str) -> Client {
     Client::new(&shared_config)
 }
 
-async fn ctrl_c_listener(client: Client, instance_id: String) {
+async fn ctrl_c_listener(client: Client, instance_id: String, key_name: String) {
     tokio::signal::ctrl_c().await.unwrap();
     println!("Received Ctrl+C!");
-    terminate_ec2_instance(&client, &instance_id).await;
-    println!("Terminated the instance.");
+    let future = tokio::spawn(terminate_ec2_instance(client.clone(), instance_id));
+    delete_ec2_key_pair(client, key_name).await;
+    let _ = future.await;
 
     std::process::exit(0);
 }
