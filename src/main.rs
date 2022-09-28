@@ -20,7 +20,8 @@ use self::{
 use aws_config::meta::region::RegionProviderChain;
 use aws_sdk_ec2::{model::InstanceType, Client, Error, Region};
 use clap::Parser;
-use std::time::Instant;
+use std::{path::PathBuf, process, time::Instant};
+use tokio::fs::remove_dir_all;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -35,7 +36,7 @@ async fn main() -> Result<(), Error> {
 
     let client = new_client(&args.region).await;
 
-    change_directory(&args.region).await;
+    let cwd = change_directory(&args.region).await;
 
     let key_name = create_new_key_pair(&client).await;
     configure_security_group(&client).await;
@@ -51,6 +52,7 @@ async fn main() -> Result<(), Error> {
         client.clone(),
         instance_id.clone(),
         key_name.clone(),
+        cwd,
     ));
 
     let ip = get_public_ip(&client, &instance_id).await;
@@ -91,12 +93,19 @@ async fn new_client(region: &str) -> Client {
     Client::new(&shared_config)
 }
 
-async fn ctrl_c_listener(client: Client, instance_id: String, key_name: String) {
+async fn ctrl_c_listener(client: Client, instance_id: String, key_name: String, cwd: PathBuf) {
     tokio::signal::ctrl_c().await.unwrap();
     println!("Received Ctrl+C!");
     let future = tokio::spawn(terminate_ec2_instance(client.clone(), instance_id));
     delete_ec2_key_pair(client, key_name).await;
     let _ = future.await;
 
-    std::process::exit(0);
+    remove_dir_all(&cwd).await.unwrap_or_else(|e| {
+        println!("Couldn't clean up the directory ({:?})! {:?}", cwd, e);
+        process::exit(1)
+    });
+
+    println!("Cleaned up the directory.");
+
+    process::exit(0);
 }

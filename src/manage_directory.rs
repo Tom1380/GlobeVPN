@@ -18,7 +18,8 @@ pub fn globevpn_directory_path() -> PathBuf {
         .join(PathBuf::from(MAIN_DIRECTORY))
 }
 
-pub async fn change_directory(region: &str) {
+/// Creates a new directory, moves into it, saves a new OpenVPN key in it and returns the directory's path.
+pub async fn change_directory(region: &str) -> PathBuf {
     let uuid = Uuid::new_v4();
 
     let specific_path = globevpn_directory_path().join(Path::new(&format!("{region}-{uuid}")));
@@ -28,6 +29,8 @@ pub async fn change_directory(region: &str) {
     env::set_current_dir(&specific_path).unwrap();
 
     generate_openvpn_key().await;
+
+    specific_path
 }
 
 async fn generate_openvpn_key() {
