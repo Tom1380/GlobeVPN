@@ -5,7 +5,7 @@ pub const REGION_INFO: [RegionInfo; 23] = [
     RegionInfo::new("eu-west-2", None, true),
     RegionInfo::new("eu-south-1", Some("ami-09412495bdfcff6e0"), false),
     RegionInfo::new("eu-west-3", None, true),
-    RegionInfo::new("eu-north-1", None, true),
+    RegionInfo::new("eu-north-1", Some("ami-081f990c364623304"), false),
     RegionInfo::new("us-east-1", None, true),
     RegionInfo::new("us-east-2", None, true),
     RegionInfo::new("us-west-1", None, true),
