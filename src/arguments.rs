@@ -1,4 +1,4 @@
-use crate::ami::REGION_INFO;
+use crate::regions::REGION_INFO;
 use clap::{Parser, ValueEnum};
 
 /// Extract an array of regions only from the array of region-ami tuples.

@@ -1,18 +1,18 @@
-mod ami;
 mod arguments;
 mod ec2_instance;
 mod key_pairs;
 mod manage_directory;
 mod openvpn;
+mod regions;
 mod security_groups;
 
 use self::{
-    ami::{get_region_info, RegionInfo},
     arguments::{Args, InstanceSize},
     ec2_instance::{get_public_ip, launch_ec2_instance, terminate_ec2_instance},
     key_pairs::create_key_pair_if_necessary,
     manage_directory::change_directory,
     openvpn::{preshare_openvpn_key, run_openvpn},
+    regions::{get_region_info, RegionInfo},
     security_groups::configure_security_group,
 };
 use aws_config::meta::region::RegionProviderChain;
