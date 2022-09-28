@@ -9,6 +9,7 @@ GlobeVPN, connect to any AWS region in a minute.
 
 [dependencies]
 clap = { version = "3.2.22", features = ["derive", "cargo"] }
+dirs = "*"
 
 # # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies.tokio]

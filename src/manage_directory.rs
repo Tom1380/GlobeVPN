@@ -1,3 +1,4 @@
+use dirs::home_dir;
 use std::{
     env, fs,
     path::{Path, PathBuf},
@@ -9,7 +10,12 @@ const MAIN_DIRECTORY: &str = ".globevpn";
 
 /// Returns the path of GlobeVPN's operating directory.
 pub fn globevpn_directory_path() -> PathBuf {
-    PathBuf::from(MAIN_DIRECTORY)
+    home_dir()
+        .unwrap_or_else(|| {
+            println!("Couldn't find your home directory.");
+            std::process::exit(1);
+        })
+        .join(PathBuf::from(MAIN_DIRECTORY))
 }
 
 pub async fn change_directory(region: &str) {
