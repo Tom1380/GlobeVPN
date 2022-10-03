@@ -72,13 +72,13 @@ async fn try_get_public_ip(client: &Client, instance_id: &str) -> Option<String>
 pub async fn terminate_ec2_instance(client: Client, instance_id: String) {
     match client
         .terminate_instances()
-        .instance_ids(instance_id)
+        .instance_ids(&instance_id)
         .send()
         .await
     {
         Ok(_) => println!("Terminated the instance."),
-        Err(_) => {
-            println!("Couldn't terminate EC2 instance. Do it manually to avoid wrong billings.")
+        Err(e) => {
+            println!("Couldn't terminate EC2 instance with ID {instance_id}! Do it manually to avoid wrong billings.\n{:?}", e)
         }
     }
 }
@@ -87,6 +87,6 @@ pub async fn terminate_ec2_instance(client: Client, instance_id: String) {
 pub async fn delete_ec2_key_pair(client: Client, key_name: String) {
     match client.delete_key_pair().key_name(&key_name).send().await {
         Ok(_) => println!("Deleted key pair from AWS."),
-        Err(_) => println!("Couldn't delete key pair {key_name} from AWS!"),
+        Err(e) => println!("Couldn't delete key pair {key_name} from AWS!\n{:?}", e),
     }
 }

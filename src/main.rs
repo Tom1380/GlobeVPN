@@ -101,7 +101,11 @@ async fn ctrl_c_listener(client: Client, instance_id: String, key_name: String, 
     let _ = future.await;
 
     remove_dir_all(&cwd).await.unwrap_or_else(|e| {
-        println!("Couldn't clean up the directory ({:?})! {:?}", cwd, e);
+        println!(
+            "Couldn't clean up the directory ({})!\n{:?}",
+            cwd.display(),
+            e
+        );
         process::exit(1)
     });
 
