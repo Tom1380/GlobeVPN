@@ -20,7 +20,7 @@ const fn regions() -> [&'static str; REGION_INFO.len()] {
 #[clap(author, version, about, long_about = None)]
 pub struct Args {
     #[clap(short, long, default_value = "eu-central-1", value_parser=regions())]
-    #[clap(help = "Where you will appear from when establishing connections.")]
+    #[clap(help = "Where you will appear to be from when establishing connections.")]
     pub region: String,
 
     #[clap(short, long, value_enum, default_value_t=InstanceSize::Micro)]
