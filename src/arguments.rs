@@ -7,7 +7,7 @@ const fn regions() -> [&'static str; REGION_INFO.len()] {
 
     let mut i = 0;
 
-    // Circumnavigates the ban on for loops in constant functions.
+    // Works around the ban on for loops in constant functions.
     while i < regions.len() {
         regions[i] = REGION_INFO[i].region;
         i += 1;
